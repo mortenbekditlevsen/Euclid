@@ -329,6 +329,21 @@ class MeshTests: XCTestCase {
         }
     }
 
+    func testInvertedMeshContainsPoint() {
+        let insidePoints = [Vector(-1, -1, -1)]
+        let outsidePoints = [Vector.zero]
+        let mesh = Mesh.sphere().inverted()
+        let bsp = BSP(mesh) { false }
+        for point in insidePoints {
+            XCTAssertTrue(mesh.containsPoint(point))
+            XCTAssertTrue(bsp.containsPoint(point))
+        }
+        for point in outsidePoints {
+            XCTAssertFalse(mesh.containsPoint(point))
+            XCTAssertFalse(bsp.containsPoint(point))
+        }
+    }
+
     // MARK: export
 
     func testCubeSTL() {
