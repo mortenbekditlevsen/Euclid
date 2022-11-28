@@ -33,19 +33,24 @@
 
 import SceneKit
 
-public extension SCNVector3 {
-    /// Creates a 3D SceneKit vector from a vector.
-    /// - Parameter v: The vector to convert.
-    init(_ v: Vector) {
-        self.init(v.x, v.y, v.z)
+extension SCNVector3: XYZRepresentable {
+    public var xyzComponents: (x: Double, y: Double, z: Double) {
+        (Double(x), Double(y), Double(z))
+    }
+
+    @_disfavoredOverload
+    public init(x: Double, y: Double, z: Double) {
+        self.init(CGFloat(x), CGFloat(y), CGFloat(z))
     }
 }
 
-public extension SCNVector4 {
-    /// Creates a 4D SceneKit vector from a color.
-    /// - Parameter c: The color to convert.
-    init(_ c: Color) {
-        self.init(c.r, c.g, c.b, c.a)
+extension SCNVector4: RGBARepresentable {
+    public var rgbaComponents: (r: Double, g: Double, b: Double, a: Double) {
+        (Double(x), Double(y), Double(z), Double(w))
+    }
+
+    public init(r: Double, g: Double, b: Double, a: Double) {
+        self.init(CGFloat(r), CGFloat(g), CGFloat(b), CGFloat(a))
     }
 }
 
@@ -441,14 +446,6 @@ private extension Data {
             float(at: index + 4),
             float(at: index + 8)
         )
-    }
-}
-
-public extension Vector {
-    /// Creates a new vector from a SceneKit vector.
-    /// - Parameter v: The SceneKit `SCNVector3`.
-    init(_ v: SCNVector3) {
-        self.init(Double(v.x), Double(v.y), Double(v.z))
     }
 }
 
