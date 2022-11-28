@@ -33,6 +33,8 @@
 
 import SceneKit
 
+let scnMaterialTypes: [AnyClass] = [SCNMaterial.self]
+
 extension SCNVector3: XYZRepresentable {
     public var xyzComponents: (x: Double, y: Double, z: Double) {
         (Double(x), Double(y), Double(z))
@@ -727,5 +729,9 @@ public extension Mesh {
         self.init(scnGeometry, materialLookup: materialLookup)
     }
 }
+
+#else
+
+let scnMaterialTypes: [AnyClass] = []
 
 #endif

@@ -114,8 +114,17 @@ extension Polygon: Codable {
 public extension Polygon {
     /// Material used by a given polygon.
     /// This can be any type that conforms to `Hashable`, but encoding/decoding is only supported
-    /// for the following types: `Color`, `String`, `Int`, `Data` or any `NSCodable` type.
+    /// for the following types: `Color`, `String`, `Int`, `Data` or any `NSSecureCodable` type.
     typealias Material = AnyHashable
+
+    /// Supported `NSSecureCodable` Material base classes.
+    static var codableClasses: [AnyClass] = {
+        #if canImport(AppKit) || canImport(UIKit)
+        return [OSImage.self, OSColor.self] + scnMaterialTypes
+        #else
+        return []
+        #endif
+    }()
 
     /// The array of vertices that make up the polygon.
     var vertices: [Vertex] { storage.vertices }
@@ -992,7 +1001,9 @@ internal struct CodableMaterial: Codable {
             } else if let color = try container.decodeIfPresent(Color.self, forKey: .color) {
                 self.value = color
             } else if let data = try container.decodeIfPresent(Data.self, forKey: .nscoded) {
-                guard let value = NSKeyedUnarchiver.unarchiveObject(with: data) as? Polygon.Material else {
+                guard let value = try NSKeyedUnarchiver.unarchivedObject(
+                    ofClasses: Polygon.codableClasses, from: data
+                ) as? Polygon.Material else {
                     throw DecodingError.dataCorruptedError(
                         forKey: .nscoded,
                         in: container,
@@ -1032,7 +1043,10 @@ internal struct CodableMaterial: Codable {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(data, forKey: .data)
         case let object as NSCoding:
-            let data = NSKeyedArchiver.archivedData(withRootObject: object)
+            let data = try NSKeyedArchiver.archivedData(
+                withRootObject: object,
+                requiringSecureCoding: true
+            )
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(data, forKey: .nscoded)
         default:
