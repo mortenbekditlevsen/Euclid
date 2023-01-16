@@ -246,7 +246,7 @@ public extension Path {
     /// path point positions relative to the bounding rectangle of the path.
     func facePolygons(material: Mesh.Material? = nil) -> [Polygon] {
         guard subpaths.count <= 1 else {
-            return subpaths.flatMap { $0.facePolygons(material: material) }
+            return Polygon.xor(subpaths.flatMap { $0.facePolygons(material: material) })
         }
         guard let vertices = faceVertices else {
             return []
@@ -598,5 +598,124 @@ internal extension Path {
             return (self, .zero)
         }
         return (translated(by: -offset), offset)
+    }
+}
+
+public extension Path {
+    /// Efficiently forms a union from multiple paths.
+    /// - Parameters
+    ///   - paths: A collection of paths to be unioned.
+    /// - Returns: An array of paths representing the union of the input paths.
+    static func union<T: Collection>(_ paths: T) -> [Path] where T.Element == Path {
+//        let paths = paths.flatMap { Path.xor($0.subpaths) }
+        guard let first = paths.first, paths.count > 1 else { return Array(paths) }
+        var polygons = first.facePolygons()
+        for path in paths.dropFirst() {
+            for polygon in path.facePolygons() {
+                var inside = [Polygon](), outside = [Polygon](), id = 0
+                polygon.clip(to: polygons, &inside, &outside, &id)
+                polygons += outside
+            }
+        }
+        return [Path(
+            subpaths: polygons
+                .makeWatertight(with: polygons.holeEdges)
+                .edgePaths(withOriginalPaths: paths)
+        )]
+    }
+
+    /// Efficiently gets the difference between multiple paths.
+    /// - Parameters
+    ///   - paths: An ordered collection of paths. All but the first will be subtracted from the first.
+    /// - Returns: An array of paths representing the difference between the input paths.
+    static func difference<T: Collection>(_ paths: T) -> [Path] where T.Element == Path {
+        let paths = paths.flatMap { $0.subpaths }
+        guard let first = paths.first, paths.count > 1 else { return paths }
+        var polygons = first.facePolygons()
+        for path in paths.dropFirst() {
+            var inside = [Polygon](), outside = [Polygon](), id = 0
+            let rhs = path.facePolygons()
+            for polygon in polygons {
+                polygon.clip(to: rhs, &inside, &outside, &id)
+            }
+            polygons = outside
+        }
+        return polygons
+            .makeWatertight(with: polygons.holeEdges)
+            .edgePaths(withOriginalPaths: paths)
+    }
+
+    /// Efficiently XORs multiple paths.
+    /// - Parameters
+    ///   - paths: A collection of paths to be XORed.
+    /// - Returns: An array of paths representing the XOR of the input paths.
+    static func xor<T: Collection>(_ paths: T) -> [Path] where T.Element == Path {
+        let paths = Array(paths)
+        guard paths.count == 2, paths.allSatisfy({ $0.subpaths.count == 1 }) else {
+            guard paths.count == 1, paths[0].subpaths.count == 2 else {
+                preconditionFailure()
+            }
+            return xor(paths[0].subpaths)
+        }
+        var result = [Path]()
+        let lhs = paths.first!.facePolygons()
+        let rhs = paths.last!.facePolygons()
+        var inside = [Polygon](), outside = [Polygon](), id = 0
+        for polygon in lhs {
+            polygon.clip(to: rhs, &inside, &outside, &id)
+        }
+        result += outside
+            .makeWatertight(with: outside.holeEdges)
+            .edgePaths(withOriginalPaths: paths)
+        outside.removeAll()
+        for polygon in rhs {
+            polygon.clip(to: lhs, &inside, &outside, &id)
+        }
+        result += outside
+            .makeWatertight(with: outside.holeEdges)
+            .edgePaths(withOriginalPaths: paths)
+        return [Path(subpaths: result)]
+    }
+}
+
+private extension Array where Element == Polygon {
+    func edgePaths<T: Collection>(withOriginalPaths paths: T) -> [Path] where T.Element == Path {
+        var pointMap = Dictionary(paths.flatMap { path -> [(Vector, PathPoint)] in
+            path.points.map { ($0.position, $0) }
+        }, uniquingKeysWith: {
+            $0.lerp($1, 0.5)
+        })
+        var polylines = [[Vector]]()
+        var edges = holeEdges.sorted()
+        while let edge = edges.popLast() {
+            var polyline = [edge.start, edge.end]
+            while let i = edges.firstIndex(where: {
+                polyline.first!.isEqual(to: $0.start) ||
+                    polyline.last!.isEqual(to: $0.start) ||
+                    polyline.first!.isEqual(to: $0.end) ||
+                    polyline.last!.isEqual(to: $0.end)
+            }) {
+                let edge = edges.remove(at: i)
+                if polyline.first!.isEqual(to: edge.start) {
+                    polyline.insert(edge.end, at: 0)
+                } else if polyline.last!.isEqual(to: edge.start) {
+                    polyline.append(edge.end)
+                } else if polyline.first!.isEqual(to: edge.end) {
+                    polyline.insert(edge.start, at: 0)
+                } else if polyline.last!.isEqual(to: edge.end) {
+                    polyline.append(edge.start)
+                }
+            }
+            polylines.append(polyline)
+        }
+        // TODO: this is just to recover texcoords/colors - find more efficient solution
+        for polygon in self {
+            for vertex in polygon.vertices {
+                if pointMap[vertex.position] == nil {
+                    pointMap[vertex.position] = PathPoint(vertex)
+                }
+            }
+        }
+        return polylines.map { Path($0.map { pointMap[$0] ?? .point($0) }) }
     }
 }

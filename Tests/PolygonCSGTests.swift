@@ -10,6 +10,32 @@
 import XCTest
 
 class PolygonCSGTests: XCTestCase {
+    // MARK: XOR
+
+    func testXorCoincidingSquares() {
+        let a = Path.square().facePolygons()[0]
+        let b = Path.square().facePolygons()[0]
+        let c = a.xor(b)
+        XCTAssert(c.isEmpty)
+    }
+
+    func testXorAdjacentSquares() {
+        let a = Path.square().facePolygons()[0]
+        let b = a.translated(by: .unitX)
+        let c = a.xor(b)
+        XCTAssertEqual(Bounds(polygons: c), a.bounds.union(b.bounds))
+    }
+
+    func testXorOverlappingSquares() {
+        let a = Path.square().facePolygons()[0]
+        let b = a.translated(by: Vector(0.5, 0, 0))
+        let c = a.xor(b)
+        XCTAssertEqual(Bounds(polygons: c), Bounds(
+            min: Vector(-0.5, -0.5, 0),
+            max: Vector(1.0, 0.5, 0)
+        ))
+    }
+
     // MARK: Plane clipping
 
     func testSquareClippedToPlane() {

@@ -344,6 +344,23 @@ public extension Polygon {
             id: id
         )
     }
+
+    /// Efficiently XORs multiple polygosn.
+    /// - Parameters
+    ///   - paths: A collection of paths to be XORed.
+    /// - Returns: An array of paths representing the XOR of the input paths.
+    static func xor<T: Collection>(_ polygons: T) -> [Polygon] where T.Element == Polygon {
+        let polygons = Array(polygons)
+        guard polygons.count == 2 else {
+            return polygons
+        }
+        let lhs = polygons.first!
+        let rhs = polygons.last!
+        var inside = [Polygon](), outside = [Polygon](), id = 0
+        lhs.clip(to: [rhs], &inside, &outside, &id)
+        rhs.clip(to: [lhs], &inside, &outside, &id)
+        return outside
+    }
 }
 
 internal extension Collection where Element == LineSegment {

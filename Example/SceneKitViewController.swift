@@ -27,14 +27,19 @@ class SceneKitViewController: UIViewController {
 
         // create some geometry using Euclid
         let start = CFAbsoluteTimeGetCurrent()
-        let cube = Mesh.cube(size: 0.8, material: UIColor.red)
-        let sphere = Mesh.sphere(slices: 120, material: UIColor.blue)
-        let mesh = cube.subtract(sphere).makeWatertight()
+//        let cube = Mesh.cube(size: 0.8, material: UIColor.red)
+//        let sphere = Mesh.sphere(slices: 120, material: UIColor.blue)
+//        let mesh = cube.subtract(sphere).makeWatertight()
 
-        print("Time:", CFAbsoluteTimeGetCurrent() - start)
-        print("Polygons:", mesh.polygons.count)
-        print("Triangles:", mesh.triangulate().polygons.count)
-        print("Watertight:", mesh.isWatertight)
+//        print("Time:", CFAbsoluteTimeGetCurrent() - start)
+//        print("Polygons:", mesh.polygons.count)
+//        print("Triangles:", mesh.triangulate().polygons.count)
+//        print("Watertight:", mesh.isWatertight)
+
+        let polygon1 = Path.square().facePolygons()[0]
+        let polygon2 = Path.square().translated(by: Vector(0.5, 0.5, 0.1)).rotated(by: .yaw(.pi / 5)).facePolygons()[0]
+        let result = polygon1.xor(polygon2)
+        let mesh = Mesh(result)
 
         // create SCNNode
         let geometry = SCNGeometry(mesh)
