@@ -188,6 +188,14 @@ public extension Rotation {
         self.init(quaternion)
     }
 
+    /// Creates a rotation from an axis and angle.
+    /// - Parameters:
+    ///   - axis: A direction defining the axis of rotation.
+    ///   - end: The angle of rotation around the axis.
+    init(axis: Direction, angle: Angle) {
+        self.init(Quaternion(axis: axis, angle: angle))
+    }
+
     /// Creates a rotation from a quaternion.
     /// - Parameter quaternion: A quaternion defining a rotation.
     init(_ quaternion: Quaternion) {
